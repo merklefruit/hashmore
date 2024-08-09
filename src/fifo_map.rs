@@ -1,17 +1,16 @@
 use hashbrown::{hash_map::DefaultHashBuilder, HashMap};
-use std::{cell::RefCell, hash::Hash, num::NonZeroUsize, rc::Rc};
-
-use crate::common::{Link, Node, NodeRef};
+use std::{
+    collections::VecDeque,
+    hash::{BuildHasher, Hash},
+    num::NonZeroUsize,
+};
 
 /// A First-In-First-Out (FIFO) map.
 ///
 /// This hashmap has a fixed, pre-allocated capacity and will remove the oldest
 /// entry when the capacity is reached and a new entry is inserted. This is useful
 /// for implementing a cache with a fixed size to prevent it from growing indefinitely.
-///
-/// It is implemented with a doubly linked list that keeps track of the oldest and newest
-/// entries and a hashmap that maps keys to values and the corresponding linked list pointer.
-///
+
 /// # Example
 ///
 /// ```rust
@@ -35,9 +34,8 @@ use crate::common::{Link, Node, NodeRef};
 /// ```
 #[derive(Debug)]
 pub struct FIFOMap<K, V, S = DefaultHashBuilder> {
-    map: HashMap<K, (V, NodeRef<K>), S>,
-    head: Link<K>,
-    tail: Link<K>,
+    map: HashMap<K, V, S>,
+    order: VecDeque<K>,
     cap: NonZeroUsize,
 }
 
@@ -53,58 +51,57 @@ where
     /// Panics if the capacity is zero.
     #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
-        let cap = NonZeroUsize::new(capacity).expect("FIFOMap capacity must be non-zero");
-        Self { map: HashMap::with_capacity(capacity), head: None, tail: None, cap }
+        Self {
+            map: HashMap::with_capacity(capacity),
+            order: VecDeque::with_capacity(capacity),
+            cap: NonZeroUsize::new(capacity).expect("FIFOMap capacity must be non-zero"),
+        }
     }
 }
 
-impl<K, V> FIFOMap<K, V>
+impl<K, V, S> FIFOMap<K, V, S>
 where
     K: Eq + Hash + Clone,
+    S: BuildHasher,
 {
     /// Inserts a new key-value pair into the map.
     /// - If the map is at capacity, the oldest entry will be removed.
     /// - If the key is already in the map, the value will be updated.
     #[inline]
     pub fn insert(&mut self, key: K, value: V) {
-        if self.map.len() == self.cap.get() {
-            self.remove_first();
+        if self.map.contains_key(&key) {
+            // If the key already exists, update the value and do not change order.
+            self.map.insert(key.clone(), value);
+        } else {
+            if self.map.len() == self.cap.get() {
+                // Evict the oldest item
+                if let Some(old_key) = self.order.pop_front() {
+                    self.map.remove(&old_key);
+                }
+            }
+            self.map.insert(key.clone(), value);
+            self.order.push_back(key);
         }
-
-        let new_node = Node { key: key.clone(), next: None, prev: self.tail.clone() };
-        let new_node_ref = Rc::new(RefCell::new(new_node));
-
-        if let Some(tail) = self.tail.take() {
-            tail.borrow_mut().next = Some(new_node_ref.clone());
-        }
-        self.tail = Some(new_node_ref.clone());
-
-        if self.head.is_none() {
-            self.head = Some(new_node_ref.clone());
-        }
-
-        self.map.insert(key, (value, new_node_ref));
     }
 
     /// Removes a key-value pair from the map and returns the value.
     /// If the key is not in the map, `None` is returned.
+    ///
+    /// Note: This operation is O(n) worst case, because it needs to find the key
+    /// in the VecDeque. If you need to remove many items (especially newly-inserted
+    /// ones), consider using a different data structure.
     #[inline]
     pub fn remove(&mut self, key: &K) -> Option<V> {
-        self.map.remove(key).map(|(v, node)| {
-            if let Some(prev) = node.borrow().prev.clone() {
-                prev.borrow_mut().next.clone_from(&node.borrow().next)
-            } else {
-                self.head.clone_from(&node.borrow().next)
+        // Remove the key from the HashMap and get the value
+        if let Some(value) = self.map.remove(key) {
+            // Remove the key from the VecDeque
+            if let Some(pos) = self.order.iter().position(|x| x == key) {
+                self.order.remove(pos);
             }
-
-            if let Some(next) = node.borrow().next.clone() {
-                next.borrow_mut().prev.clone_from(&node.borrow().prev)
-            } else {
-                self.tail.clone_from(&node.borrow().prev);
-            }
-
-            v
-        })
+            Some(value)
+        } else {
+            None
+        }
     }
 
     /// Returns the number of key-value pairs currently in the map.
@@ -136,14 +133,14 @@ where
     /// The values are returned by reference.
     #[inline]
     pub fn values(&self) -> impl Iterator<Item = &V> {
-        self.map.values().map(|(v, _)| v)
+        self.map.values()
     }
 
     /// An iterator visiting all key-value pairs in insertion order.
     /// The key-value pairs are returned by reference.
     #[inline]
     pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
-        self.map.iter().map(|(k, (v, _))| (k, v))
+        self.map.iter()
     }
 
     /// Returns a reference to the value corresponding to the key.
@@ -151,7 +148,7 @@ where
     /// - The key-value pair is not removed from the map.
     #[inline]
     pub fn get(&self, key: &K) -> Option<&V> {
-        self.map.get(key).map(|(v, _)| v)
+        self.map.get(key)
     }
 
     /// Checks if the map contains the given key.
@@ -160,21 +157,6 @@ where
     #[inline]
     pub fn contains_key(&self, key: &K) -> bool {
         self.map.contains_key(key)
-    }
-
-    /// Removes the oldest entry from the map.
-    /// If the map is empty, this is a no-op.
-    fn remove_first(&mut self) {
-        if let Some(head) = self.head.take() {
-            if let Some(next) = head.borrow_mut().next.take() {
-                next.borrow_mut().prev = None;
-                self.head = Some(next);
-            } else {
-                self.tail.take();
-            }
-            let key = &head.borrow().key;
-            self.map.remove(key);
-        }
     }
 }
 

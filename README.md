@@ -14,6 +14,10 @@ A `FIFOMap` is a map that evicts the oldest key-value pair when it reaches a
 certain size. This is useful for implementing caches and other data structures
 where you want to limit the size of the data structure.
 
+The implementation is based on a `HashMap` wrapped with a ring buffer (`VecDeque`)
+to keep track of the order of insertion of the keys. When the map reaches its
+capacity, the oldest key-value pair is removed from the map and the ring buffer.
+
 ```rust
 use hashmore::FIFOMap;
 

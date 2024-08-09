@@ -23,8 +23,6 @@
     unused_unsafe
 )]
 
-mod common;
-
 mod fifo_map;
 pub use fifo_map::FIFOMap;
 

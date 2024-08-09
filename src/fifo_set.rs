@@ -34,7 +34,7 @@ use std::{
 /// assert!(set.contains(&3));
 /// assert!(set.contains(&4));
 /// ```
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FIFOSet<K, S = DefaultHashBuilder> {
     set: HashSet<K, S>,
     order: VecDeque<K>,

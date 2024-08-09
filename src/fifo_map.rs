@@ -32,7 +32,7 @@ use std::{
 /// assert_eq!(map.get(&"a"), None);
 /// assert_eq!(map.get(&"b"), Some(&2));
 /// ```
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FIFOMap<K, V, S = DefaultHashBuilder> {
     map: HashMap<K, V, S>,
     order: VecDeque<K>,

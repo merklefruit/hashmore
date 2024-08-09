@@ -14,7 +14,7 @@ use std::{
 /// # Example
 ///
 /// ```rust
-/// use fifo_map::FIFOMap;
+/// use hashmore::FIFOMap;
 ///
 /// let mut map = FIFOMap::with_capacity(3);
 ///

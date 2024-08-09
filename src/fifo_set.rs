@@ -14,7 +14,7 @@ use std::{
 /// # Example
 ///
 /// ```rust
-/// use fifo_set::FIFOSet;
+/// use hashmore::FIFOSet;
 ///
 /// let mut set = FIFOSet::with_capacity(3);
 ///

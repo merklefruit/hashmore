@@ -1,4 +1,9 @@
-//! TODO: Add crate docs
+//! Hashmore: A collection of hash-based primitive data structures for Rust.
+//!
+//! Available data structures:
+//! - FIFOMap
+//! - FIFOSet
+//! - More to come!
 
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 #![warn(

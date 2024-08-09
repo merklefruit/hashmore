@@ -10,7 +10,7 @@ use std::{
 /// This hashmap has a fixed, pre-allocated capacity and will remove the oldest
 /// entry when the capacity is reached and a new entry is inserted. This is useful
 /// for implementing a cache with a fixed size to prevent it from growing indefinitely.
-
+///
 /// # Example
 ///
 /// ```rust
@@ -149,6 +149,12 @@ where
     #[inline]
     pub fn get(&self, key: &K) -> Option<&V> {
         self.map.get(key)
+    }
+
+    /// Returns a mutable reference to the value corresponding to the key.
+    #[inline]
+    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
+        self.map.get_mut(key)
     }
 
     /// Checks if the map contains the given key.

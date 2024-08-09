@@ -4,7 +4,6 @@ version = "0.1.0"
 authors = ["Merklefruit <merklefruit@proton.me>"]
 description = "More hash-based primitive data structures for Rust"
 edition = "2021"
-rust-version = "1.70"
 license = "MIT"
 exclude = [".github/", "benches/"]
 
